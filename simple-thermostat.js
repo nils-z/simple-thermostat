@@ -17,7 +17,7 @@ function renderStyles () {
         font-weight: var(--paper-font-body1_-_font-weight);
         line-height: var(--paper-font-body1_-_line-height);
 
-        padding-bottom: 16px;
+        padding-bottom: 0px;
       }
 
       ha-card.no-header {
@@ -27,14 +27,30 @@ function renderStyles () {
       .body {
         display: flex;
         flex-direction: row;
-        justify-content: space-around;
-        align-items: center;
+        justify-content: space-between;
+      }
+      .info {
+        flex-grow: 1;
+        padding-right: 20px;
       }
       .main {
         display: flex;
         flex-direction: row;
         align-items: center;
-        justify-content: center;
+        justify-content: space-between;
+        padding-right: 10px;
+      }
+      .control {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-around;
+      }
+      .actual--value {
+        margin: 0;
+        font-size: var(--thermostat-font-size-m);
+        font-weight: 400;
+        line-height: var(--thermostat-font-size-l);
       }
       .sensors {
         font-size: 1.1em;
@@ -83,9 +99,12 @@ function renderStyles () {
       }
       .current--value {
         margin: 0;
-        font-size: var(--thermostat-font-size-xl);
+        font-size: var(--thermostat-font-size-l);
         font-weight: 400;
-        line-height: var(--thermostat-font-size-xl);
+        line-height: var(--thermostat-font-size-l);
+      }
+      .hot {
+        color: #ff8100;
       }
       .current--unit {
         font-size: var(--thermostat-font-size-m);
@@ -123,7 +142,7 @@ const modeIcons = {
   manual: "hass:cursor-pointer",
   heat: "hass:fire",
   cool: "hass:snowflake",
-  off: "hass:power",
+  off: "mdi:radiator-off",
   fan_only: "hass:fan",
   eco: "hass:leaf",
   dry: "hass:water-percent",
@@ -273,9 +292,15 @@ class SimpleThermostat extends LitElement {
     return html`
       ${renderStyles()}
       <ha-card class="${this.name ? '' : 'no-header' }">
-        ${ this.renderHeader() }
+        
         <section class="body">
-          <table class="sensors">${sensorHtml}</table>
+          <div class="info">
+            ${ this.renderHeader() }
+            <div class="control">
+              ${ this.renderModeButtons(operations, operation) }
+              <div class="actual--value">${formatNumber(current)}${unit}</div>
+            </div>
+          </div>
 
           <div class="main">
             <div class="current-wrapper">
@@ -287,7 +312,7 @@ class SimpleThermostat extends LitElement {
               </paper-icon-button>
 
               <div class="current" @click='${() => this.openEntityPopover(config.entity)}'>
-                <h3 class="current--value">${formatNumber(this._temperature)}</h3>
+                <h3 class="current--value ${this._mode === "heat" ? "hot" : ""}">${formatNumber(this._temperature)}</h3>
               </div>
               <paper-icon-button
                 class="thermostat-trigger"
@@ -296,7 +321,7 @@ class SimpleThermostat extends LitElement {
               >
               </paper-icon-button>
             </div>
-            <span class="current--unit">${unit}</span>
+            <span class="current--unit ${this._mode === "heat" ? "hot" : ""}">${unit}</span>
           </div>
         </section>
       </ha-card>
@@ -322,6 +347,23 @@ class SimpleThermostat extends LitElement {
         </h2>
       </header>
     `
+  }
+
+  renderModeButtons (modes, mode) {
+    const setOff = this.setModeDiscrete.bind(this, "off")
+    const setHeat = this.setModeDiscrete.bind(this, "heat")
+    return html`<paper-icon-button
+            class="thermostat-trigger"
+            icon="${modeIcons["off"]}"
+            @click='${setOff}'
+          >
+          </paper-icon-button>
+          <paper-icon-button
+            class="thermostat-trigger"
+            icon="${modeIcons["heat"]}"
+            @click='${setHeat}'
+          >
+          </paper-icon-button>`
   }
 
   renderModeSelector (modes, mode) {
@@ -412,6 +454,15 @@ class SimpleThermostat extends LitElement {
       this._hass.callService("climate", "set_operation_mode", {
         entity_id: this.config.entity,
         operation_mode: value,
+      });
+    }
+  }
+
+  setModeDiscrete (mode) {
+    if (mode && mode !== this._mode) {
+      this._hass.callService("climate", "set_operation_mode", {
+        entity_id: this.config.entity,
+        operation_mode: mode,
       });
     }
   }
